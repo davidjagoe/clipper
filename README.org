@@ -1,0 +1,34 @@
+* clipper
+
+Clojure RFID reader interface built on LLRP using the [[http://www.llrp.org/][LLRP Toolkit]].
+
+* Status
+
+Experimental
+
+* Usage
+
+Hook up a LLRP compatible reader.
+
+$ lein swank
+
+user> (in-ns 'clipper.core)
+clipper.core> (main)
+
+See output on the terminal
+
+clipper.core> (delete-ro-specs)
+clipper.core> (disconnect reader)
+
+* Road Map
+
+- Configuration
+  - Extract the ROSpec from code into a s-expression based configuration file
+  - Set the ROSpec using XML rather than the verbose java API
+- Clearly define the API
+
+* License
+
+Copyright (C) David Jagoe 2011.
+
+Distributed under the Eclipse Public License, the same as Clojure.

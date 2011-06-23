@@ -1,14 +1,20 @@
 (ns clipper.core
   (:import [org.llrp.ltk.net LLRPConnector LLRPEndpoint]
-           [org.llrp.ltk.types LLRPMessage UnsignedInteger UnsignedByte UnsignedShortArray]
+           [org.llrp.ltk.types LLRPMessage UnsignedInteger
+            UnsignedShort UnsignedByte UnsignedShortArray Bit]
            [org.llrp.ltk.generated.messages
             RO_ACCESS_REPORT
-            DELETE_ROSPEC]
+            DELETE_ROSPEC
+            ADD_ROSPEC
+            ENABLE_ROSPEC
+            START_ROSPEC]
            [org.llrp.ltk.generated.enumerations
             ROSpecState
             ROSpecStartTriggerType
             ROSpecStopTriggerType
             AISpecStopTriggerType
+            AirProtocols
+            ROReportTriggerType
             ]
            [org.llrp.ltk.generated.parameters
             AISpec
@@ -17,7 +23,9 @@
             ROBoundarySpec
             ROSpecStartTrigger
             ROSpecStopTrigger
-            
+            InventoryParameterSpec
+            ROReportSpec
+            TagReportContentSelector
             ]))
 
 ;; Translating the following example from java to clojure.
@@ -30,8 +38,11 @@
      (proxy [Object LLRPEndpoint] []
        (errorOccured [msg] nil)
        (messageReceived [msg]
-                        (if (= (.getTypeNum msg)) RO_ACCESS_REPORT/TYPENUM
-                            (println msg)))))
+                        (if (= (.getTypeNum msg) RO_ACCESS_REPORT/TYPENUM)
+                          (let [tags (.getTagReportDataList msg)]
+                            (doseq [tag tags]
+                              (println (.getEPCParameter tag))
+                              (println (.getLastSeenTimestampUTC tag))))))))
 
 (def reader (LLRPConnector. handler "10.2.0.99"))
 
@@ -45,7 +56,7 @@
           (.setROSpecID (UnsignedInteger. 0)))]
     (println (.toXMLString (.transact reader del TIMEOUT_MS)))))
 
-(defn add-ro-spec [reader]
+(defn build-ro-spec []
   (doto (ROSpec.) ;; Create a Reader Operation Spec
     (.setPriority (UnsignedByte. 0))
     (.setCurrentState (ROSpecState. ROSpecState/Disabled))
@@ -71,77 +82,64 @@
        ;; run until the RO Spec stops.
        (.setAISpecStopTrigger
         (doto (AISpecStopTrigger.)
-          (.setAISpecStopTriggerType (AISpecStopTriggerType. AISpecStopTriggerType/Null))))
+          (.setAISpecStopTriggerType (AISpecStopTriggerType. AISpecStopTriggerType/Null))
+          (.setDurationTrigger (UnsignedInteger. 0))))
        (.setAntennaIDs
         (doto (UnsignedShortArray.)
-          (.add (UnsignedInteger. 0)))))
-     ))
+          (.add (UnsignedShort. 0))))
+       ;; Tell the reader that we're reading Gen2 tags
+       (.addToInventoryParameterSpecList
+        (doto (InventoryParameterSpec.)
+          (.setProtocolID (AirProtocols. AirProtocols/EPCGlobalClass1Gen2))
+          (.setInventoryParameterSpecID (UnsignedShort. 1))))))
+    (.setROReportSpec
+     (doto (ROReportSpec.)
+       (.setROReportTrigger
+        (ROReportTriggerType. ROReportTriggerType/Upon_N_Tags_Or_End_Of_ROSpec))
+       (.setN (UnsignedShort. 1))
+       (.setTagReportContentSelector
+        (doto (TagReportContentSelector.)
+          (.setEnableAccessSpecID (Bit. 0))
+          (.setEnableAntennaID (Bit. 0))
+          (.setEnableChannelIndex (Bit. 0))
+          (.setEnableFirstSeenTimestamp (Bit. 0))
+          (.setEnableInventoryParameterSpecID (Bit. 0))
+          (.setEnableLastSeenTimestamp (Bit. 1))
+          (.setEnablePeakRSSI (Bit. 0))
+          (.setEnableROSpecID (Bit. 0))
+          (.setEnableSpecIndex (Bit. 0))
+          (.setEnableTagSeenCount (Bit. 0))))))))
 
+(defn add-ro-spec [reader]
+  (let [ro-spec (build-ro-spec)
+        message (doto (ADD_ROSPEC.)
+                  (.setROSpec ro-spec))]
+    (.transact reader message TIMEOUT_MS)))
+
+(defn enable-ro-spec [reader]
+  (let [message (doto (ENABLE_ROSPEC.)
+                  (.setROSpecID (UnsignedInteger. ROSPEC_ID)))]
+    (.transact reader message TIMEOUT_MS)))
+
+(defn start-ro-spec [reader]
+  (let [message (doto (START_ROSPEC.)
+                  (.setROSpecID (UnsignedInteger. ROSPEC_ID)))]
+    (.transact reader message TIMEOUT_MS))
   )
 
 (defn disconnect [reader]
   (.disconnect reader))
 
-(connect reader)
-(delete-ro-specs reader)
-(disconnect reader)
-(add-ro-spec reader)
-;; (enable-ro-specs)
-;; (start-ro-specs)
-
-;; (def config-xml "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-;; <llrp:ADD_ROSPEC xmlns:llrp=\"http://www.llrp.org/ltk/schema/core/encoding/xml/1.0\" Version=\"1\" MessageID=\"4\">
-;;   <llrp:ROSpec>
-;;     <llrp:ROSpecID>1</llrp:ROSpecID>
-;;     <llrp:Priority>0</llrp:Priority>
-;;     <llrp:CurrentState>Disabled</llrp:CurrentState>
-;;     <llrp:ROBoundarySpec>
-;;       <llrp:ROSpecStartTrigger>
-;;         <llrp:ROSpecStartTriggerType>Null</llrp:ROSpecStartTriggerType>
-;;       </llrp:ROSpecStartTrigger>
-;;       <llrp:ROSpecStopTrigger>
-;;         <llrp:ROSpecStopTriggerType>Null</llrp:ROSpecStopTriggerType>
-;;         <llrp:DurationTriggerValue>0</llrp:DurationTriggerValue>
-;;       </llrp:ROSpecStopTrigger>
-;;     </llrp:ROBoundarySpec>
-;;     <llrp:AISpec>
-;;       <llrp:AntennaIDs>0</llrp:AntennaIDs>
-;;       <llrp:AISpecStopTrigger>
-;;         <llrp:AISpecStopTriggerType>Null</llrp:AISpecStopTriggerType>
-;;         <llrp:DurationTrigger>0</llrp:DurationTrigger>
-;;       </llrp:AISpecStopTrigger>
-;;       <llrp:InventoryParameterSpec>
-;;         <llrp:InventoryParameterSpecID>9</llrp:InventoryParameterSpecID>
-;;         <llrp:ProtocolID>EPCGlobalClass1Gen2</llrp:ProtocolID>
-;;       </llrp:InventoryParameterSpec>
-;;     </llrp:AISpec>
-;;     <llrp:ROReportSpec>
-;;       <llrp:ROReportTrigger>Upon_N_Tags_Or_End_Of_AISpec</llrp:ROReportTrigger>
-;;       <llrp:N>1</llrp:N>
-;;       <llrp:TagReportContentSelector>
-;;         <llrp:EnableROSpecID>1</llrp:EnableROSpecID>
-;;         <llrp:EnableSpecIndex>1</llrp:EnableSpecIndex>
-;;         <llrp:EnableInventoryParameterSpecID>1</llrp:EnableInventoryParameterSpecID>
-;;         <llrp:EnableAntennaID>1</llrp:EnableAntennaID>
-;;         <llrp:EnableChannelIndex>1</llrp:EnableChannelIndex>
-;;         <llrp:EnablePeakRSSI>1</llrp:EnablePeakRSSI>
-;;         <llrp:EnableFirstSeenTimestamp>1</llrp:EnableFirstSeenTimestamp>
-;;         <llrp:EnableLastSeenTimestamp>1</llrp:EnableLastSeenTimestamp>
-;;         <llrp:EnableTagSeenCount>1</llrp:EnableTagSeenCount>
-;;         <llrp:EnableAccessSpecID>1</llrp:EnableAccessSpecID>
-;;         <llrp:C1G2EPCMemorySelector>
-;;           <llrp:EnableCRC>1</llrp:EnableCRC>
-;;           <llrp:EnablePCBits>1</llrp:EnablePCBits>
-;;         </llrp:C1G2EPCMemorySelector>
-;;       </llrp:TagReportContentSelector>
-;;     </llrp:ROReportSpec>
-;;   </llrp:ROSpec>
-;; </llrp:ADD_ROSPEC>")
-
-;; (def config-dom (org.jdom.Document. config-xml))
-
-;; (def config-message (LLRPMessage.))
-;; (def config-dom ())
-
-
-
+(defn main []
+  (println "Connecting to reader")
+  (connect reader)
+  (println "Deleting RO specs")
+  (delete-ro-specs reader)
+  (println "Adding RO specs")
+  (add-ro-spec reader)
+  (println "Enabling RO Spec")
+  (enable-ro-spec reader)
+  (println "Starting RO Spec")
+  (start-ro-spec reader)
+  #_(println "Disconnecting from reader")
+  #_(disconnect reader))
