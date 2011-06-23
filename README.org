@@ -26,6 +26,8 @@ clipper.core> (disconnect reader)
   - Extract the ROSpec from code into a s-expression based configuration file
   - Set the ROSpec using XML rather than the verbose java API
 - Clearly define the API
+- Dependency management
+  - Upload deps to clojars ltkjava-1.0.0.6-with-dependencies.jar
 
 * License
 
