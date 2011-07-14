@@ -25,4 +25,6 @@
 (def reader (LLRPConnector. handler "10.2.0.99"))
 
 (defn run []
-  (clipper/main reader))
+  (clipper/start reader)
+  (Thread/sleep 10000)
+  (clipper/stop reader))
