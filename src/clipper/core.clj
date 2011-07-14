@@ -28,23 +28,18 @@
             TagReportContentSelector
             ]))
 
+;;; Clipper is a clojure library built on top of LLRP. It makes it
+;;; easy to configure and control LLRP-compliant RFID readers from a
+;;; clojure program. At the moment it doesn't do much: it sets up the
+;;; reader with a default reader spec (e.g. read on all antennas,
+;;; report on every tag read, etc) and allows the application to
+;;; supply a reader object with a tag-read handler.
+
 ;; Translating the following example from java to clojure.
 ;; http://learn.impinj.com/2010/09/creating-rfid-applications-with-java.html
 
 (def TIMEOUT_MS 10000)
 (def ROSPEC_ID 123)
-
-(def handler
-     (proxy [Object LLRPEndpoint] []
-       (errorOccured [msg] nil)
-       (messageReceived [msg]
-                        (if (= (.getTypeNum msg) RO_ACCESS_REPORT/TYPENUM)
-                          (let [tags (.getTagReportDataList msg)]
-                            (doseq [tag tags]
-                              (println (.getEPCParameter tag))
-                              (println (.getLastSeenTimestampUTC tag))))))))
-
-(def reader (LLRPConnector. handler "10.2.0.99"))
 
 (defn connect [reader]
   (.connect reader))
@@ -130,16 +125,16 @@
 (defn disconnect [reader]
   (.disconnect reader))
 
-(defn main []
-  (println "Connecting to reader")
+;;; Public API
+;;; ----------
+
+(defn start [reader]
   (connect reader)
-  (println "Deleting RO specs")
   (delete-ro-specs reader)
-  (println "Adding RO specs")
   (add-ro-spec reader)
-  (println "Enabling RO Spec")
   (enable-ro-spec reader)
-  (println "Starting RO Spec")
-  (start-ro-spec reader)
-  #_(println "Disconnecting from reader")
-  #_(disconnect reader))
+  (start-ro-spec reader))
+
+(defn stop [reader]
+  (delete-ro-specs reader)
+  (disconnect reader))
