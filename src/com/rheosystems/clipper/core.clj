@@ -1,4 +1,4 @@
-(ns clipper.core
+(ns com.rheosystems.clipper.core
   (:import [org.llrp.ltk.net LLRPConnector LLRPEndpoint]
            [org.llrp.ltk.types LLRPMessage UnsignedInteger
             UnsignedShort UnsignedByte UnsignedShortArray Bit]

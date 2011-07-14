@@ -1,8 +1,8 @@
-(ns clipper.demo
+(ns com.rheosystems.clipper.demo
   (:import [org.llrp.ltk.net LLRPConnector LLRPEndpoint]
            [org.llrp.ltk.generated.messages
             RO_ACCESS_REPORT])
-  (:require [clipper.core :as clipper]))
+  (:require [com.rheosystems.clipper.core :as clipper]))
 
 ;;; This is a demo of how an application might use the clipper
 ;;; library. At the moment there are no options. The only thing that
