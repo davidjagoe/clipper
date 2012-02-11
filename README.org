@@ -1,6 +1,7 @@
-* clipper
+* Welcom to clipper
 
-Clojure RFID reader interface built on LLRP using the [[http://www.llrp.org/][LLRP Toolkit]].
+Clipper is an RFID reader interface for the clojure programming
+language. Clipper is built on LLRP using the [[http://www.llrp.org/][LLRP Toolkit]].
 
 * Status
 
@@ -8,7 +9,7 @@ Experimental
 
 * Usage
 
-Hook up a LLRP compatible reader.
+Hook up a LLRP compatible reader, then run
 
 $ lein swank
 
